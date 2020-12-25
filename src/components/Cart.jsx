@@ -1,38 +1,63 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { HOST } from '../config.js';
 
-import {CartContext} from '../CartContext';
+import axios from 'axios';
 
-export default function Cart({ cart, clearCart, removeFromCart}) {
-    const HOST = 'http://localhost:3005';
+
+export default function Cart({ cart, setCart }) {
+    
     let discountPercentage = null;
     let discountInEuro = null;
 
     const [totalPrice, setTotalPrice] = useState(0);
 
     useEffect(() => {
-        console.log('effect')
         getTotalSum();
     }, []);
 
 
-    const applyDiscount = (total) => {
+
+    const removeFromCart = async (productToRemove) => {
+         const indexFound = cart.findIndex(item => item._id == productToRemove._id);
+         const price = cart[indexFound].price;
+
+         if(cart[indexFound].quantity > 1) {
+           cart[indexFound].quantity--;
+         } else {
+          setCart(cart.filter(product => product !== productToRemove))
+         }
+        setTotalPrice(totalPrice - price);
+
+       const result = await axios.delete(HOST + '/cart/'+ productToRemove._id);
+
+
+      }
+
+
+      const clearCart = () => {
+        setCart([]);
+        axios.delete(HOST + '/cart/empty-cart')
+      }
+
+      
+
+    const applyDiscount = async (total) => {
         discountPercentage = document.querySelector('#discountPercentage').value;
         discountInEuro = document.querySelector('#discountEuro').value;
         getTotalSum();
+        axios.post(HOST + '/cart/discount', { discountPercentage, discountInEuro });
         console.log('discount')
     }
 
     const getTotalSum = () => {
-        console.log('sum')
         let value = cart.reduce((sum, { price, quantity }) => sum + parseInt(price) * quantity, 0);
         if(discountInEuro) {value -= discountInEuro}
         if(discountPercentage) { value -= (value / 100) * discountPercentage}
-        //return value;
         setTotalPrice(value);
     }
 
 
-    const [products, setProducts] = useContext(CartContext);
+
 
     return (
         <>
@@ -45,8 +70,8 @@ export default function Cart({ cart, clearCart, removeFromCart}) {
             <div className="product" key={key}>
               <h3>{product.name}</h3>
               <h4>$ {product.price}</h4>
-              <h4>quantity: {product.quantity}</h4>
-              <img src={HOST + '/'+product.image} alt={product.name} />
+              <h4>{product.quantity}</h4>
+              <img src={HOST + '/' + product.image} alt={product.name} />
               <button onClick={() => removeFromCart(product)}>Remove</button>
           </div>
         ))}
